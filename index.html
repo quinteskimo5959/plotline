@@ -24,7 +24,7 @@ html{-webkit-text-size-adjust:100%}
 /* Layout: a side rail switches views. Timeline = one vertical spine with event stops and chapter bands. Chapters = the same spine with one card per chapter. */
 :root{
   --bg:#F1F4F4; --card:#FFFFFF; --ink:#13202A; --sub:#34444D; --muted:#5A6A73; --line:#CBD5D8; --soft:#E4EAEB;
-  --accent:#2B47D6; --accent-ink:#FFFFFF; --key:#E8A317; --danger:#B42318; --field:#FFFFFF;
+  --accent:#2B47D6; --accent-ink:#FFFFFF; --key:#E8A317; --danger:#B42318; --field:#FFFFFF; --ta:.28;
   --display:"Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif;
   --body:"Source Serif 4", Georgia, "Times New Roman", serif;
   --mono:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
@@ -85,7 +85,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
 .meta .err{color:var(--danger)}
 
 /* sticky bar */
-.bar{position:sticky; top:env(safe-area-inset-top, 0px); z-index:20; display:flex; align-items:center; justify-content:space-between; gap:10px 10px; margin-top:14px; padding:10px 0; background:var(--bg); border-bottom:1px solid var(--line)}
+.bar{position:sticky; top:env(safe-area-inset-top, 0px); z-index:20; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 10px; margin-top:14px; padding:10px 0; background:var(--bg); border-bottom:1px solid var(--line)}
 .zoom{display:flex; align-items:center; gap:8px; min-width:0; flex:1 1 0}
 .zoom button{flex:none; width:36px; height:36px; display:grid; place-items:center; border:1px solid var(--line); border-radius:50%; background:var(--card); cursor:pointer}
 .zoom button:disabled{opacity:.4; cursor:default}
@@ -178,6 +178,35 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
 .pt.drop-before::after{top:-5px}
 .pt.drop-after::after{bottom:-5px}
 
+/* Overall tone view: paint events with the colors of the rainbow */
+.tn-red{--tc:229 57 53} .tn-orange{--tc:245 124 0} .tn-yellow{--tc:245 190 10} .tn-green{--tc:46 170 90}
+.tn-blue{--tc:30 144 255} .tn-indigo{--tc:83 61 214} .tn-violet{--tc:168 85 247}
+.swrow{flex:0 0 100%; display:flex; gap:5px; padding:2px 4px 4px}
+.sw{flex:1 1 0; min-width:0; max-width:48px; height:34px; padding:0; border:2px solid transparent; border-radius:9px; background:rgb(var(--tc)); cursor:pointer; display:grid; place-items:center}
+.sw[aria-checked="true"]{box-shadow:0 0 0 2px var(--bg), 0 0 0 4px var(--ink)}
+.sw.erase{background:var(--card); border:1.5px dashed var(--muted); color:var(--ink)}
+.swrow.nudge{outline:2px solid var(--accent); outline-offset:3px; border-radius:10px}
+.tonepanel{margin-top:14px}
+.tlabel{display:block; max-width:34rem}
+.tlabel input{width:100%; padding:9px 11px; border:1px solid var(--line); border-radius:8px; background:var(--field); color:var(--ink); font:400 1rem/1.4 var(--body)}
+#toneStripWrap{margin-top:14px}
+.strip{display:flex; gap:1px; height:12px; border-radius:6px; overflow:hidden}
+.seg{flex:1 1 0; min-width:2px; background:var(--line)}
+.seg[class*="tn-"]{background:rgb(var(--tc))}
+.legend{list-style:none; display:flex; flex-wrap:wrap; gap:6px 14px; margin:10px 0 0; padding:0; font:400 .78rem var(--mono); color:var(--sub)}
+.legend li{display:flex; align-items:center; gap:6px}
+.legend b{font-weight:500; color:var(--muted)}
+.dot{flex:none; width:10px; height:10px; border-radius:50%; background:rgb(var(--tc))}
+.tonehelp{margin:10px 0 0; font:400 .78rem/1.5 var(--mono); color:var(--muted)}
+.ev.toned .card{background:rgb(var(--tc) / var(--ta)); border:1px solid rgb(var(--tc)); border-left-width:6px; border-radius:10px}
+.z1 .ev.toned .card,.z2 .ev.toned .card{padding:8px 12px}
+.ev.toned .node{border-color:rgb(var(--tc)); background:rgb(var(--tc))}
+.tonetag{display:flex; align-items:center; gap:6px; margin:8px 0 0; font:500 .72rem var(--mono); letter-spacing:.06em; text-transform:uppercase; color:var(--ink)}
+.z1 .tonetag{display:none}
+.line.tone .ev:not(.chap) .card{cursor:pointer}
+.ptsro{margin:10px 0 0; padding:0 0 0 18px; color:var(--sub); font:400 .95rem/1.45 var(--body)}
+.sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}
+
 /* editing + dragging */
 .eform{display:flex; flex-direction:column; gap:12px}
 .eform label{display:block}
@@ -246,6 +275,10 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
             <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round"><path d="M4 4.5h9M4 15.5h9" stroke-width="3.2"/><path d="M4 9h14M4 12h11M4 20h14" stroke-width="1.8"/></g></svg>
             <span>Chapters</span>
           </button>
+          <button type="button" class="vitem" role="menuitemradio" data-view="tone" aria-checked="false">
+            <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M2.5 17a8.5 8.5 0 0 1 17 0"/><path d="M6 17a5 5 0 0 1 10 0"/></g><circle cx="11" cy="17" r="1.7" fill="currentColor"/></svg>
+            <span>Overall tone</span>
+          </button>
         </div>
       </div>
 
@@ -265,7 +298,15 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
           </div>
           <span class="zlabel" id="chapLabel" hidden><b>Chapters</b><span class="sub">A title and a line about each</span></span>
           <button class="btn primary" id="addBtn" type="button" aria-label="Add event">+ Event</button>
+          <div class="swrow" id="swRow" role="radiogroup" aria-label="Tone color" hidden></div>
         </div>
+
+        <section class="tonepanel" id="tonePanel" aria-label="Overall tone" hidden>
+          <label class="tlabel" id="toneLabWrap" hidden><span class="lab" id="toneLabLab">Red means</span><input type="text" id="toneLabel" maxlength="40" autocomplete="off" placeholder="Anything you like: tense, hopeful, calm"></label>
+          <div id="toneStripWrap" hidden><span class="lab">Tone across the story</span><div class="strip" id="toneStrip" aria-hidden="true"></div></div>
+          <ul class="legend" id="toneLegend"></ul>
+          <p class="tonehelp" id="toneHelp"></p>
+        </section>
 
         <ol class="line z3" id="line"></ol>
         <p class="blank" id="blank" hidden></p>
@@ -299,7 +340,7 @@ const $ = (s, r) => (r || document).querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid = p => p + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-3);
 
-const KEY = 'plotline.stories.v1', K_SEEDED = 'plotline.seeded', K_CUR = 'plotline.current', K_ZOOM = 'plotline.zoom', K_VIEW = 'plotline.view', K_BACKUP = 'plotline.lastBackup';
+const KEY = 'plotline.stories.v1', K_SEEDED = 'plotline.seeded', K_CUR = 'plotline.current', K_ZOOM = 'plotline.zoom', K_VIEW = 'plotline.view', K_BACKUP = 'plotline.lastBackup', K_BRUSH = 'plotline.brush';
 let storageOK = true;
 try { localStorage.setItem('plotline.test', '1'); localStorage.removeItem('plotline.test'); } catch(e){ storageOK = false; }
 const LS = {
@@ -315,6 +356,10 @@ const ZOOMS = {
   4: ['Full', 'The whole description'],
   5: ['Close-up', 'Plus small details you can add']
 };
+const TONES = [['red', 'Red'], ['orange', 'Orange'], ['yellow', 'Yellow'], ['green', 'Green'], ['blue', 'Blue'], ['indigo', 'Indigo'], ['violet', 'Violet']];
+const TONE_IDS = TONES.map(t => t[0]);
+const toneName = id => { const t = TONES.find(x => x[0] === id); return t ? t[1] : ''; };
+const toneText = (s, id) => String(((s && s.toneLabels) || {})[id] || '').trim() || toneName(id);
 const GRIP = '<svg width="14" height="18" viewBox="0 0 14 18" aria-hidden="true"><g fill="currentColor"><circle cx="4" cy="3" r="1.6"/><circle cx="10" cy="3" r="1.6"/><circle cx="4" cy="9" r="1.6"/><circle cx="10" cy="9" r="1.6"/><circle cx="4" cy="15" r="1.6"/><circle cx="10" cy="15" r="1.6"/></g></svg>';
 const GRIP_S = '<svg width="10" height="14" viewBox="0 0 10 14" aria-hidden="true"><g fill="currentColor"><circle cx="3" cy="2.5" r="1.3"/><circle cx="7" cy="2.5" r="1.3"/><circle cx="3" cy="7" r="1.3"/><circle cx="7" cy="7" r="1.3"/><circle cx="3" cy="11.5" r="1.3"/><circle cx="7" cy="11.5" r="1.3"/></g></svg>';
 const X_ICON = '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>';
@@ -324,6 +369,8 @@ const el = {
   title: $('#storyTitle'), premise: $('#premise'), count: $('#count'), status: $('#status'),
   line: $('#line'), blank: $('#blank'), zOut: $('#zOut'), zIn: $('#zIn'), zRange: $('#zRange'), zLabel: $('#zLabel'),
   zoomGrp: $('#zoomGrp'), chapLabel: $('#chapLabel'), vbtns: [...document.querySelectorAll('.vitem')], dots: $('#dotsBtn'), menu: $('#viewMenu'), rail: $('#rail'),
+  swRow: $('#swRow'), tonePanel: $('#tonePanel'), toneLabWrap: $('#toneLabWrap'), toneLabLab: $('#toneLabLab'), toneLabel: $('#toneLabel'),
+  toneStripWrap: $('#toneStripWrap'), toneStrip: $('#toneStrip'), toneLegend: $('#toneLegend'), toneHelp: $('#toneHelp'), foot: $('.foot'),
   add: $('#addBtn'), addBottom: $('#addBottom'), del: $('#delStory'), note: $('#note'),
   saveOne: $('#saveOne'), saveAll: $('#saveAll'), saveText: $('#saveText'), openBtn: $('#openBtn'),
   importFile: $('#importFile'), backupMsg: $('#backupMsg'), lastBackup: $('#lastBackup'), installTip: $('#installTip')
@@ -332,7 +379,9 @@ const el = {
 let stories = [];
 let currentId = LS.get(K_CUR);
 let zoom = Math.max(1, Math.min(MAXZ, parseInt(LS.get(K_ZOOM), 10) || 3));
-let view = LS.get(K_VIEW) === 'chapters' ? 'chapters' : 'story';
+let view = ['chapters', 'tone'].includes(LS.get(K_VIEW)) ? LS.get(K_VIEW) : 'story';
+let brush = LS.get(K_BRUSH);
+if(!(TONE_IDS.includes(brush) || brush === 'erase')) brush = null;
 let editingId = null, selectedId = null, pendingFocus = false, pendingPoint = null;
 let drag = null, saveTimer = 0;
 
@@ -361,20 +410,26 @@ function normEvent(e){
   if(e.kind === 'chapter') return { id: String(e.id || uid('c')), kind: 'chapter', title: String(e.title || ''), summary: String(e.summary || '') };
   return {
     id: String(e.id || uid('e')), kind: 'event', title: String(e.title || ''), when: String(e.when || ''),
-    detail: String(e.detail || ''), key: !!e.key, points: Array.isArray(e.points) ? e.points.map(normPoint) : []
+    detail: String(e.detail || ''), key: !!e.key, points: Array.isArray(e.points) ? e.points.map(normPoint) : [],
+    tone: TONE_IDS.includes(e.tone) ? e.tone : ''
   };
+}
+function normLabels(o){
+  const out = {};
+  if(o && typeof o === 'object') TONE_IDS.forEach(k => { const v = String(o[k] == null ? '' : o[k]).slice(0, 40); if(v.trim()) out[k] = v; });
+  return out;
 }
 function norm(d){
   d = d || {};
   return {
-    title: String(d.title || ''), premise: String(d.premise || ''), order: Number(d.order) || 0,
+    title: String(d.title || ''), premise: String(d.premise || ''), order: Number(d.order) || 0, toneLabels: normLabels(d.toneLabels),
     events: Array.isArray(d.events) ? d.events.map(normEvent) : []
   };
 }
 function exampleStory(){
   const ev = (id, title, when, detail, key, points) => ({ id, kind: 'event', title, when, detail, key, points: (points || []).map((t, i) => ({ id: id + '-p' + i, text: t })) });
   const ch = (id, title, summary) => ({ id, kind: 'chapter', title, summary });
-  return {
+  const story = {
     id: 's-example', title: 'Example: The Keeper of Marrow Point',
     premise: 'A sample timeline to show how the map works. Edit anything here, or use New story to start your own.',
     order: 1,
@@ -395,10 +450,14 @@ function exampleStory(){
       ev('e-ex9', 'Ines writes the last entry', 'Winter, Year 1', 'She closes the logbook with a full sentence, which is more than her predecessor managed.', false)
     ]
   };
+  const tones = { 'e-ex1': 'blue', 'e-ex2': 'indigo', 'e-ex3': 'indigo', 'e-ex4': 'violet', 'e-ex5': 'yellow', 'e-ex6': 'orange', 'e-ex7': 'orange', 'e-ex8': 'red', 'e-ex9': 'green' };
+  story.events.forEach(e => { if(tones[e.id]) e.tone = tones[e.id]; });
+  story.toneLabels = { blue: 'Hopeful', indigo: 'Uneasy', violet: 'Strange', yellow: 'Discovery', orange: 'Tense', red: 'Danger', green: 'Calm' };
+  return story;
 }
 function persistNow(){
   clearTimeout(saveTimer); saveTimer = 0;
-  const data = stories.map(s => ({ id: s.id, title: s.title, premise: s.premise, order: s.order, events: s.events }));
+  const data = stories.map(s => ({ id: s.id, title: s.title, premise: s.premise, order: s.order, toneLabels: s.toneLabels || {}, events: s.events }));
   const ok = LS.set(KEY, JSON.stringify(data));
   setStatus(ok ? 'Saved on this device' : 'Not saved: this browser is blocking storage', !ok);
   return ok;
@@ -586,11 +645,73 @@ function chapCardHTML(b, ci, cn, ctx){
   }
   return `<li class="${cls}" data-id="${esc(m.id)}" data-kind="block"><span class="node" aria-hidden="true"></span><article class="card">${body}</article></li>`;
 }
+function toneEvHTML(e, ctx, s){
+  const t = e.tone || '';
+  const cls = 'ev' + (e.key ? ' key' : '') + (t ? ' toned tn-' + t : '');
+  const title = e.title ? esc(e.title) : '<span class="ph">Untitled event</span>';
+  const whenLine = `<p class="when"><span class="num">${ctx.nums[e.id]}</span>${e.when ? ' · ' + esc(e.when) : ''}</p>`;
+  const detail = zoom >= 3 && e.detail ? `<p class="detail">${esc(e.detail).replace(/\n/g, '<br>')}</p>` : '';
+  const pl = livePoints(e);
+  let pts = '';
+  if(zoom === 5 && pl.length) pts = '<ul class="ptsro">' + pl.map(p => '<li>' + esc(p.text) + '</li>').join('') + '</ul>';
+  else if(pl.length && (zoom === 3 || zoom === 4)) pts = `<p class="ptsum">${plural(pl.length, 'small detail')}</p>`;
+  const tag = t ? `<p class="tonetag"><i class="dot"></i>${esc(toneText(s, t))}</p>` : '';
+  const sr = t ? `<span class="sr"> (${toneName(t)})</span>` : '';
+  const body = `<div class="row1"><div class="txt">${whenLine}<h3 class="et"><button type="button" class="tbtn" data-action="paint">${title}${sr}</button></h3></div><button type="button" class="grip" data-grip aria-label="Drag to reorder: ${esc(e.title || 'untitled event')}">${GRIP}</button></div>${detail}${pts}${tag}`;
+  return `<li class="${cls}" data-id="${esc(e.id)}"><span class="node" aria-hidden="true"></span><article class="card">${body}</article></li>`;
+}
+function toneMarkerHTML(e, ctx){
+  const title = e.title ? esc(e.title) : '<span class="ph">Untitled chapter</span>';
+  const sum = zoom >= 3 && e.summary ? `<p class="detail">${esc(e.summary)}</p>` : '';
+  return `<li class="ev chap" data-id="${esc(e.id)}"><span class="node" aria-hidden="true"></span><article class="card"><div class="row1"><div class="txt"><p class="when">Chapter ${ctx.chn[e.id]}</p><h3 class="et">${title}</h3></div></div>${sum}</article></li>`;
+}
+function renderToneMeta(){
+  const s = cur(), on = view === 'tone';
+  el.tonePanel.hidden = !on; el.swRow.hidden = !on;
+  el.add.hidden = on; el.foot.hidden = on;
+  if(!on || !s) return;
+  const evs = s.events.filter(e => !isCh(e));
+  [...el.swRow.children].forEach(b => b.setAttribute('aria-checked', String(b.dataset.tone === brush)));
+  const isColor = TONE_IDS.includes(brush);
+  el.toneLabWrap.hidden = !isColor;
+  if(isColor){
+    el.toneLabLab.textContent = toneName(brush) + ' means';
+    if(document.activeElement !== el.toneLabel) el.toneLabel.value = (s.toneLabels || {})[brush] || '';
+  }
+  el.toneStripWrap.hidden = !evs.length;
+  el.toneStrip.innerHTML = evs.map(e => e.tone ? `<span class="seg tn-${e.tone}"></span>` : '<span class="seg"></span>').join('');
+  const counts = {}; evs.forEach(e => { if(e.tone) counts[e.tone] = (counts[e.tone] || 0) + 1; });
+  el.toneLegend.innerHTML = TONES.filter(t => counts[t[0]] || ((s.toneLabels || {})[t[0]] || '').trim())
+    .map(t => `<li><i class="dot tn-${t[0]}"></i>${esc(toneText(s, t[0]))} <b>${counts[t[0]] || 0}</b></li>`).join('');
+  el.toneHelp.textContent = brush === 'erase' ? 'Eraser is on. Tap a painted event to clear its color.'
+    : isColor ? 'Tap an event to paint it ' + toneName(brush).toLowerCase() + '. Tap a painted one again to clear it.'
+    : 'Pick a color above, then tap events to paint them.';
+}
+function setBrush(b){
+  brush = b; LS.set(K_BRUSH, b); renderToneMeta();
+}
+function paint(id){
+  const s = cur(), e = findEv(id);
+  if(!s || !e || isCh(e)) return;
+  if(!brush){
+    el.swRow.classList.add('nudge'); setTimeout(() => el.swRow.classList.remove('nudge'), 900);
+    return;
+  }
+  const next = brush === 'erase' ? '' : (e.tone === brush ? '' : brush);
+  if(next === (e.tone || '')) return;
+  e.tone = next; persistNow(); renderList();
+}
 function renderList(){
   const s = cur(); if(!s) return;
   const ctx = numbering(s);
   let html = '', msg = '';
-  if(view === 'chapters'){
+  if(view === 'tone'){
+    const vis = visibleEvents(s);
+    el.line.className = 'line tone z' + zoom;
+    html = vis.map(e => isCh(e) ? toneMarkerHTML(e, ctx) : toneEvHTML(e, ctx, s)).join('');
+    if(!s.events.length) msg = 'No events to color yet. Add some from the Timeline view.';
+    else if(!vis.length) msg = 'No key moments yet. Zoom in one step to see every event.';
+  } else if(view === 'chapters'){
     const bl = blocksOf(s), chs = bl.filter(b => b.marker);
     el.line.className = 'line zc';
     let ci = -1;
@@ -607,6 +728,7 @@ function renderList(){
   el.blank.textContent = msg; el.blank.hidden = !msg;
   el.line.hidden = !html;
   updateCount();
+  renderToneMeta();
   if(pendingFocus){
     pendingFocus = false;
     const t = el.line.querySelector('[data-field="title"]');
@@ -662,6 +784,15 @@ function openMenu(){
 el.dots.addEventListener('click', () => el.menu.hidden ? openMenu() : closeMenu(false));
 el.vbtns.forEach(b => b.addEventListener('click', () => { setView(b.dataset.view); closeMenu(true); }));
 document.addEventListener('pointerdown', ev => { if(!el.menu.hidden && !el.rail.contains(ev.target)) closeMenu(false); });
+el.swRow.innerHTML = TONES.map(t => `<button type="button" class="sw tn-${t[0]}" role="radio" aria-checked="false" data-tone="${t[0]}" aria-label="${t[1]}" title="${t[1]}"></button>`).join('')
+  + `<button type="button" class="sw erase" role="radio" aria-checked="false" data-tone="erase" aria-label="Eraser" title="Eraser">${X_ICON}</button>`;
+el.swRow.addEventListener('click', ev => { const b = ev.target.closest('.sw'); if(b) setBrush(b.dataset.tone); });
+el.toneLabel.addEventListener('input', () => {
+  const s = cur(); if(!s || !TONE_IDS.includes(brush)) return;
+  s.toneLabels = s.toneLabels || {};
+  s.toneLabels[brush] = el.toneLabel.value.replace(/\n/g, ' ');
+  touch(); renderList();
+});
 el.menu.addEventListener('keydown', ev => {
   const items = el.vbtns, i = items.indexOf(document.activeElement);
   if(ev.key === 'ArrowDown'){ ev.preventDefault(); items[(i + 1) % items.length].focus(); }
@@ -828,6 +959,10 @@ function armed(btn, label, run){
 el.line.addEventListener('click', ev => {
   const li = ev.target.closest('li.ev'); if(!li) return;
   const id = li.dataset.id;
+  if(view === 'tone'){
+    if(ev.target.closest('[data-grip]')) return;
+    return paint(id);
+  }
   const btn = ev.target.closest('[data-action]');
   const act = btn ? btn.dataset.action : null;
   if(act === 'select') return toggleSelect(id);
@@ -949,7 +1084,7 @@ function switchTo(id){
 function newStory(){
   if(saveTimer) persistNow();
   pruneBlank();
-  const s = { id: uid('s'), title: '', premise: '', order: Date.now(), events: [] };
+  const s = { id: uid('s'), title: '', premise: '', order: Date.now(), toneLabels: {}, events: [] };
   stories.push(s); currentId = s.id; editingId = null; selectedId = null;
   view = 'story'; LS.set(K_VIEW, 'story');
   LS.set(K_CUR, s.id); persistNow();
@@ -1008,9 +1143,10 @@ function pack(list){
     app: 'plotline', version: 2, exported: new Date().toISOString(),
     stories: list.map(s => ({
       title: s.title, premise: s.premise,
+      toneLabels: normLabels(s.toneLabels),
       events: s.events.map(e => isCh(e)
         ? { kind: 'chapter', title: e.title, summary: e.summary }
-        : { title: e.title, when: e.when, detail: e.detail, key: !!e.key, points: livePoints(e).map(p => p.text) })
+        : Object.assign({ title: e.title, when: e.when, detail: e.detail, key: !!e.key, points: livePoints(e).map(p => p.text) }, e.tone ? { tone: e.tone } : {}))
     }))
   }, null, 2);
 }
@@ -1028,7 +1164,7 @@ function outline(s){
       return;
     }
     n++;
-    out.push(n + '. ' + (e.title || 'Untitled event') + (e.when ? ' (' + e.when + ')' : '') + (e.key ? ' *' : ''));
+    out.push(n + '. ' + (e.title || 'Untitled event') + (e.when ? ' (' + e.when + ')' : '') + (e.key ? ' *' : '') + (e.tone ? ' [tone: ' + toneText(s, e.tone) + ']' : ''));
     if(e.detail) out.push('   ' + e.detail.replace(/\n/g, '\n   '));
     livePoints(e).forEach(p => out.push('   - ' + p.text));
     out.push('');
@@ -1078,7 +1214,7 @@ async function doImport(file){
     const list = parseImport(JSON.parse(await file.text()));
     const base = Date.now();
     const added = list.map((s, i) => ({
-      id: uid('s'), title: s.title, premise: s.premise, order: base + i,
+      id: uid('s'), title: s.title, premise: s.premise, order: base + i, toneLabels: s.toneLabels,
       events: s.events.map(e => {
         const c = Object.assign({}, e, { id: uid(isCh(e) ? 'c' : 'e') });
         if(c.points) c.points = c.points.map(p => ({ id: uid('p'), text: p.text }));

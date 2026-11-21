@@ -1,5 +1,5 @@
 /* Plotline offline cache. Bump CACHE each time index.html changes so phones pick up the new version. */
-const CACHE = 'plotline-v3';
+const CACHE = 'plotline-v4';
 const CORE = ['./', 'index.html', 'manifest.webmanifest', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {

@@ -1,0 +1,1125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F1F4F4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E161D" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Plotline">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+:root{color-scheme:light; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px)}
+html{-webkit-text-size-adjust:100%}
+[hidden]{display:none!important}
+</style>
+<title>Plotline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<style>
+/* Layout: a side rail switches views. Timeline = one vertical spine with event stops and chapter bands. Chapters = the same spine with one card per chapter. */
+:root{
+  --bg:#F1F4F4; --card:#FFFFFF; --ink:#13202A; --sub:#34444D; --muted:#5A6A73; --line:#CBD5D8; --soft:#E4EAEB;
+  --accent:#2B47D6; --accent-ink:#FFFFFF; --key:#E8A317; --danger:#B42318; --field:#FFFFFF;
+  --display:"Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --body:"Source Serif 4", Georgia, "Times New Roman", serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E161D; --card:#16212B; --ink:#E6EDF1; --sub:#BFCCD3; --muted:#97A7B0; --line:#2B3A46; --soft:#1C2A35;
+    --accent:#8CA0FF; --accent-ink:#0E161D; --key:#F2B93B; --danger:#F97066; --field:#101A22; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E161D; --card:#16212B; --ink:#E6EDF1; --sub:#BFCCD3; --muted:#97A7B0; --line:#2B3A46; --soft:#1C2A35;
+  --accent:#8CA0FF; --accent-ink:#0E161D; --key:#F2B93B; --danger:#F97066; --field:#101A22; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg); color:var(--ink); font:400 17px/1.5 var(--body);
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+  padding-block:20px 80px;
+}
+body::before{content:""; position:fixed; inset:0 0 auto; height:env(safe-area-inset-top, 0px); background:var(--bg); z-index:30}
+body.is-dragging{user-select:none; -webkit-user-select:none; cursor:grabbing}
+.app{max-width:860px; margin:0 auto; min-width:0}
+button{font:inherit; color:inherit}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+/* story picker */
+.chips{display:flex; gap:8px; overflow-x:auto; padding:2px 0 8px; scrollbar-width:thin}
+.chip{flex:none; max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font:500 .78rem var(--mono); letter-spacing:.04em; padding:7px 12px; border:1px solid var(--line); border-radius:999px; background:transparent; color:var(--muted); cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink); color:var(--bg); border-color:var(--ink)}
+.chip.add{border-style:dashed}
+
+/* side rail + content column */
+.shell{display:grid; grid-template-columns:34px minmax(0,1fr); gap:6px; align-items:start; margin-top:6px}
+.col{--sp:32px; min-width:0}
+.rail{position:sticky; top:calc(env(safe-area-inset-top, 0px) + 14px); z-index:25}
+.dots{display:grid; place-items:center; width:34px; height:42px; padding:0; border:1px solid var(--line); border-radius:10px; background:var(--card); color:var(--ink); cursor:pointer}
+.dots svg{display:block}
+.dots[aria-expanded="true"]{background:var(--ink); color:var(--bg); border-color:var(--ink)}
+.vmenu{position:absolute; left:0; top:calc(100% + 6px); min-width:176px; display:flex; flex-direction:column; gap:2px; padding:6px; background:var(--card); border:1px solid var(--line); border-radius:12px; box-shadow:0 12px 28px rgba(0,0,0,.2)}
+.vitem{display:flex; align-items:center; gap:10px; width:100%; padding:11px 12px; border:0; border-radius:8px; background:transparent; color:var(--ink); cursor:pointer; text-align:left; font:500 .98rem var(--display)}
+.vitem svg{flex:none; display:block}
+.vitem[aria-checked="true"]{background:var(--ink); color:var(--bg)}
+.vitem:not([aria-checked="true"]):hover{background:var(--soft)}
+@media (min-width:520px){ .col{--sp:38px} }
+@media (min-width:600px){ .shell{grid-template-columns:40px minmax(0,1fr); gap:16px} .dots{width:40px; height:46px} }
+
+/* heading block */
+.title{display:block; width:100%; resize:none; overflow:hidden; margin:0; padding:10px 0 6px; border:0; border-bottom:2px solid transparent; border-radius:0; background:transparent; color:var(--ink);
+  font:800 clamp(2.1rem, 7.5vw, 4.2rem)/1.02 var(--display); letter-spacing:-.025em; overflow-wrap:anywhere}
+.title:hover{border-bottom-color:var(--line)}
+.title:focus-visible{outline:none; border-bottom-color:var(--accent)}
+.title::placeholder{color:var(--muted); opacity:.6}
+.premise{display:block; width:100%; resize:none; overflow:hidden; margin:6px 0 0; padding:2px 0; border:0; background:transparent; color:var(--sub); font:italic 400 1.1rem/1.5 var(--body); max-width:62ch}
+.premise::placeholder{color:var(--muted)}
+.meta{display:flex; flex-wrap:wrap; gap:4px 14px; margin:10px 0 0; font:400 .78rem var(--mono); color:var(--muted)}
+.meta .err{color:var(--danger)}
+
+/* sticky bar */
+.bar{position:sticky; top:env(safe-area-inset-top, 0px); z-index:20; display:flex; align-items:center; justify-content:space-between; gap:10px 10px; margin-top:14px; padding:10px 0; background:var(--bg); border-bottom:1px solid var(--line)}
+.zoom{display:flex; align-items:center; gap:8px; min-width:0; flex:1 1 0}
+.zoom button{flex:none; width:36px; height:36px; display:grid; place-items:center; border:1px solid var(--line); border-radius:50%; background:var(--card); cursor:pointer}
+.zoom button:disabled{opacity:.4; cursor:default}
+.zoom input[type=range]{flex:1 1 56px; min-width:44px; max-width:170px; accent-color:var(--accent)}
+.zlabel{flex:0 0 auto; font:400 .76rem/1.3 var(--mono); color:var(--muted)}
+.zlabel b{display:block; font:700 .95rem var(--display); color:var(--ink); letter-spacing:0}
+.zlabel .sub{display:none}
+#chapLabel{flex:1 1 0; min-width:0}
+.btn{font:500 .9rem var(--display); padding:9px 14px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); cursor:pointer}
+.btn.primary{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+.btn.danger{color:var(--danger); border-color:var(--danger); background:transparent}
+.btn.ghost{background:transparent; color:var(--muted)}
+.bar .btn{flex:none; padding:9px 12px; white-space:nowrap}
+@media (min-width:560px){ .zlabel .sub{display:block} }
+
+/* the map */
+.line{list-style:none; margin:22px 0 0; padding:0; position:relative; --ny:10px}
+.line.z3,.line.z4,.line.z5,.line.zc{--ny:15px}
+.line::before{content:""; position:absolute; left:11px; top:6px; bottom:6px; width:2px; background:var(--line)}
+.ev{position:relative; margin:0 0 2px; padding-left:var(--sp); scroll-margin-top:96px}
+.z3 .ev,.z4 .ev,.z5 .ev,.zc .ev{margin-bottom:14px}
+.z5 .ev{margin-bottom:18px}
+.ev.sel{--ny:15px; margin:8px 0 14px}
+.node{position:absolute; left:4px; top:var(--ny); width:16px; height:16px; border-radius:50%; background:var(--bg); border:3px solid var(--accent)}
+.ev.key .node{left:4.5px; width:15px; height:15px; border-radius:3px; transform:rotate(45deg); background:var(--key); border-color:var(--key)}
+.card{padding:8px 0}
+.z3 .card,.z4 .card,.z5 .card,.zc .card,.ev.sel .card{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px}
+.ev.sel .card{border-color:var(--accent)}
+@media (max-width:519px){
+  .z3 .card,.z4 .card,.z5 .card,.zc .card,.ev.sel .card{padding:12px 13px}
+  .et{font-size:1.2rem}
+}
+.row1{display:flex; align-items:flex-start; justify-content:space-between; gap:10px}
+.txt{min-width:0; flex:1}
+.when{margin:0; font:500 .72rem/1.5 var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--accent); overflow-wrap:anywhere}
+.num{color:var(--muted); font-weight:500}
+.et{margin:2px 0 0; font:700 1.35rem/1.2 var(--display); letter-spacing:-.01em; overflow-wrap:anywhere}
+.tbtn{all:unset; cursor:pointer}
+.tbtn:focus-visible{outline:2px solid var(--accent); outline-offset:3px; border-radius:3px}
+.ph{color:var(--muted); font-weight:500}
+.z1 .txt,.z2 .txt{display:flex; flex-wrap:wrap; align-items:baseline; column-gap:12px}
+.z1 .ev:not(.sel) .when,.z2 .ev:not(.sel) .when{order:2}
+.z1 .ev:not(.sel) .et,.z2 .ev:not(.sel) .et{margin:0; font-size:1.08rem}
+.z1 .ev:not(.sel) .et{font-size:1.15rem}
+.detail{margin:8px 0 0; max-width:62ch; font:400 .98rem/1.55 var(--body); color:var(--sub); overflow-wrap:anywhere}
+.z3 .ev:not(.sel) .detail{display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+.z5 .detail{font-size:1.05rem}
+.range{margin:8px 0 0; font:400 .78rem/1.5 var(--mono); color:var(--muted)}
+.grip{flex:none; width:34px; height:34px; display:grid; place-items:center; margin:-4px -6px 0 0; border:0; border-radius:8px; background:transparent; color:var(--muted); cursor:grab; touch-action:none; -webkit-touch-callout:none}
+.grip:hover{background:var(--soft)}
+.acts{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px}
+.acts button{font:500 .82rem var(--display); padding:7px 11px; border:1px solid var(--line); border-radius:7px; background:var(--bg); cursor:pointer}
+.acts button:disabled{opacity:.4; cursor:default}
+.blank{margin:26px 0 0; padding-left:var(--sp); color:var(--muted); font-style:italic; max-width:52ch}
+
+/* chapter bands inside the timeline */
+.ev.chap .node{left:2px; top:calc(var(--ny) + 3px); width:20px; height:6px; border-radius:3px; border:0; background:var(--ink)}
+.line .ev.chap .card{background:transparent; border:0; border-top:2px solid var(--ink); border-radius:0; padding:12px 0 6px}
+.line .ev.chap.sel .card{border-top-color:var(--accent)}
+.ev.chap .et{font-size:1.55rem; font-weight:800; letter-spacing:-.02em}
+.ev.chap .when{color:var(--ink)}
+.z1 .ev.chap:not(.sel) .when,.z2 .ev.chap:not(.sel) .when{order:0}
+.z1 .ev.chap:not(.sel) .et,.z2 .ev.chap:not(.sel) .et{font-size:1.3rem; font-weight:800}
+.z1 .ev.chap:not(.sel) .card,.z2 .ev.chap:not(.sel) .card{padding-top:8px}
+.z1 .ev.chap:not(.sel) .txt,.z2 .ev.chap:not(.sel) .txt{display:block}
+.ev.chap{margin-top:10px}
+.ev.chap:first-child{margin-top:0}
+.line .ev.chap.dragging .card{background:var(--card); border:1px solid var(--accent); border-radius:10px; padding:12px 14px}
+
+/* chapter cards in the Chapters view */
+.ev.chapcard .node{left:2px; top:calc(var(--ny) + 3px); width:20px; height:6px; border-radius:3px; border:0; background:var(--ink)}
+.ev.chapcard .node.muted{background:var(--line)}
+.ev.chapcard .et{font-size:1.5rem; font-weight:800; letter-spacing:-.02em}
+.ev.chapcard .when{color:var(--ink)}
+.ev.chapcard.open .when{color:var(--muted)}
+
+/* small details (Close-up zoom) */
+.ptsbox{margin-top:14px; padding-top:12px; border-top:1px dashed var(--line)}
+.ptsbox .lab{margin-bottom:8px}
+.pts{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px}
+.pt{position:relative; display:flex; align-items:center; gap:4px}
+.pin{flex:1; min-width:0; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--field); color:var(--ink); font:400 .95rem/1.4 var(--body)}
+.pgrip,.pdel{flex:none; width:28px; height:34px; display:grid; place-items:center; border:0; border-radius:7px; background:transparent; color:var(--muted); cursor:pointer}
+.pgrip{cursor:grab; touch-action:none; -webkit-touch-callout:none}
+.pgrip:hover,.pdel:hover{background:var(--soft)}
+.padd{margin-top:8px; font:500 .82rem var(--display); padding:7px 11px; border:1px dashed var(--muted); border-radius:7px; background:transparent; cursor:pointer}
+.ptsum{margin:8px 0 0; font:400 .72rem var(--mono); color:var(--muted)}
+.pt.dragging{z-index:15; background:var(--card); filter:drop-shadow(0 6px 12px rgba(0,0,0,.25))}
+.pt.drop-before::after,.pt.drop-after::after{content:""; position:absolute; left:0; right:0; height:3px; border-radius:2px; background:var(--accent)}
+.pt.drop-before::after{top:-5px}
+.pt.drop-after::after{bottom:-5px}
+
+/* editing + dragging */
+.eform{display:flex; flex-direction:column; gap:12px}
+.eform label{display:block}
+.lab{display:block; margin-bottom:4px; font:500 .72rem var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.hint{font:400 .72rem var(--mono); letter-spacing:0; text-transform:none; color:var(--muted)}
+.eform input[type=text],.eform textarea{width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:var(--field); color:var(--ink); font:400 1rem/1.5 var(--body)}
+.eform input[data-field=title]{font:700 1.15rem var(--display)}
+.eform textarea{resize:vertical; min-height:7rem}
+.eform textarea[data-field=summary]{min-height:4.5rem}
+.chk{display:flex!important; align-items:flex-start; gap:10px}
+.chk input{margin-top:5px; accent-color:var(--key); width:18px; height:18px; flex:none}
+.facts{display:flex; flex-wrap:wrap; gap:10px; justify-content:space-between}
+.ev.dragging{z-index:15; filter:drop-shadow(0 10px 18px rgba(0,0,0,.28))}
+.ev.dragging .card{background:var(--card); border:1px solid var(--accent); border-radius:10px; padding:14px 16px}
+.ev.drop-before::after,.ev.drop-after::after{content:""; position:absolute; left:var(--sp); right:0; height:3px; border-radius:2px; background:var(--accent)}
+.ev.drop-before::after{top:-3px}
+.ev.drop-after::after{bottom:-3px}
+
+.foot{margin-top:20px}
+.keep{margin-top:36px; padding-top:22px; border-top:1px solid var(--line); max-width:62ch}
+.keep h2{margin:0 0 6px; font:700 1.15rem var(--display)}
+.keep p{margin:0 0 14px; color:var(--sub); font-size:.98rem}
+.keepbtns{display:flex; flex-wrap:wrap; gap:10px}
+.keep .small{margin:12px 0 0; font:400 .78rem/1.5 var(--mono); color:var(--muted)}
+.keep .small.err{color:var(--danger)}
+.keep .remove{margin-top:26px}
+.hero{margin-top:12vh; max-width:34rem}
+.hero .eyebrow{font:500 .78rem var(--mono); letter-spacing:.12em; text-transform:uppercase; color:var(--accent); margin:0}
+.hero h2{margin:8px 0 10px; font:800 clamp(2rem, 7vw, 3.2rem)/1.05 var(--display); letter-spacing:-.02em}
+.hero p{color:var(--sub); margin:0 0 20px}
+.hero .row{display:flex; flex-wrap:wrap; gap:10px}
+.note{font:400 .85rem/1.5 var(--mono); color:var(--muted); margin:18px 0 0}
+.note.err{color:var(--danger)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important; scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+
+
+<div class="app">
+  <nav class="chips" id="chips" aria-label="Stories" hidden></nav>
+  <p class="note" id="note" role="status"></p>
+
+  <section class="hero" id="empty" hidden>
+    <p class="eyebrow">Plotline</p>
+    <h2>Map a story from first beat to last</h2>
+    <p>Add events, drag them into order, group them into chapters, and zoom out to see the shape of the whole plot. Everything stays on this device.</p>
+    <div class="row">
+      <button class="btn primary" id="emptyBtn" type="button">Start a story</button>
+      <button class="btn" id="emptyImport" type="button">Open a saved story</button>
+    </div>
+  </section>
+
+  <main id="story" hidden>
+    <div class="shell">
+      <div class="rail" id="rail">
+        <button type="button" class="dots" id="dotsBtn" aria-label="Choose a view" aria-haspopup="true" aria-expanded="false" aria-controls="viewMenu">
+          <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><g fill="currentColor"><circle cx="10" cy="4" r="2"/><circle cx="10" cy="10" r="2"/><circle cx="10" cy="16" r="2"/></g></svg>
+        </button>
+        <div class="vmenu" id="viewMenu" role="menu" aria-label="Views" hidden>
+          <button type="button" class="vitem" role="menuitemradio" data-view="story" aria-checked="true">
+            <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 3v16"/><path d="M10 5h9M10 11h7M10 17h9"/></g><g fill="currentColor"><circle cx="5" cy="5" r="2.3"/><circle cx="5" cy="11" r="2.3"/><circle cx="5" cy="17" r="2.3"/></g></svg>
+            <span>Timeline</span>
+          </button>
+          <button type="button" class="vitem" role="menuitemradio" data-view="chapters" aria-checked="false">
+            <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round"><path d="M4 4.5h9M4 15.5h9" stroke-width="3.2"/><path d="M4 9h14M4 12h11M4 20h14" stroke-width="1.8"/></g></svg>
+            <span>Chapters</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="col">
+        <header>
+          <textarea class="title" id="storyTitle" rows="1" maxlength="120" aria-label="Story title" placeholder="Untitled story"></textarea>
+          <textarea class="premise" id="premise" rows="1" maxlength="400" aria-label="Story premise" placeholder="A line or two about the story (optional)"></textarea>
+          <p class="meta"><span id="count"></span><span id="status" role="status" aria-live="polite"></span></p>
+        </header>
+
+        <div class="bar">
+          <div class="zoom" id="zoomGrp" role="group" aria-label="Zoom">
+            <button type="button" id="zOut" aria-label="Zoom out"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg></button>
+            <input type="range" id="zRange" min="1" max="5" step="1" aria-label="Zoom level">
+            <button type="button" id="zIn" aria-label="Zoom in"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M8 3v10" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg></button>
+            <span class="zlabel" id="zLabel"></span>
+          </div>
+          <span class="zlabel" id="chapLabel" hidden><b>Chapters</b><span class="sub">A title and a line about each</span></span>
+          <button class="btn primary" id="addBtn" type="button" aria-label="Add event">+ Event</button>
+        </div>
+
+        <ol class="line z3" id="line"></ol>
+        <p class="blank" id="blank" hidden></p>
+
+        <div class="foot"><button class="btn" id="addBottom" type="button">Add event</button></div>
+
+        <section class="keep" id="keep" aria-labelledby="keepTitle">
+          <h2 id="keepTitle">Keep your stories safe</h2>
+          <p>Your stories are stored on this device only. Save a backup file now and then, and send it to Files or Google Drive from the share sheet. You can open that file later, on this device or another one.</p>
+          <div class="keepbtns">
+            <button class="btn" id="saveOne" type="button">Save this story</button>
+            <button class="btn" id="saveAll" type="button">Save all stories</button>
+            <button class="btn" id="saveText" type="button">Save as readable text</button>
+            <button class="btn" id="openBtn" type="button">Open a saved story</button>
+          </div>
+          <p class="small" id="backupMsg" role="status"></p>
+          <p class="small" id="lastBackup"></p>
+          <p class="small" id="installTip" hidden>Tip: add this page to your Home Screen from your browser's Share button before you start writing, then always open it from the icon. Stories made in the browser tab do not carry over to the icon.</p>
+          <button class="btn ghost remove" id="delStory" type="button">Delete this story</button>
+        </section>
+      </div>
+    </div>
+  </main>
+  <input type="file" id="importFile" accept=".json,application/json,text/plain" hidden>
+</div>
+
+<script>
+(function(){
+'use strict';
+const $ = (s, r) => (r || document).querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = p => p + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-3);
+
+const KEY = 'plotline.stories.v1', K_SEEDED = 'plotline.seeded', K_CUR = 'plotline.current', K_ZOOM = 'plotline.zoom', K_VIEW = 'plotline.view', K_BACKUP = 'plotline.lastBackup';
+let storageOK = true;
+try { localStorage.setItem('plotline.test', '1'); localStorage.removeItem('plotline.test'); } catch(e){ storageOK = false; }
+const LS = {
+  get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
+  set(k, v){ try { localStorage.setItem(k, v); return true; } catch(e){ return false; } }
+};
+
+const MAXZ = 5;
+const ZOOMS = {
+  1: ['Outline', 'Key moments only'],
+  2: ['Beats', 'Every event, titles only'],
+  3: ['Summary', 'Titles with a short preview'],
+  4: ['Full', 'The whole description'],
+  5: ['Close-up', 'Plus small details you can add']
+};
+const GRIP = '<svg width="14" height="18" viewBox="0 0 14 18" aria-hidden="true"><g fill="currentColor"><circle cx="4" cy="3" r="1.6"/><circle cx="10" cy="3" r="1.6"/><circle cx="4" cy="9" r="1.6"/><circle cx="10" cy="9" r="1.6"/><circle cx="4" cy="15" r="1.6"/><circle cx="10" cy="15" r="1.6"/></g></svg>';
+const GRIP_S = '<svg width="10" height="14" viewBox="0 0 10 14" aria-hidden="true"><g fill="currentColor"><circle cx="3" cy="2.5" r="1.3"/><circle cx="7" cy="2.5" r="1.3"/><circle cx="3" cy="7" r="1.3"/><circle cx="7" cy="7" r="1.3"/><circle cx="3" cy="11.5" r="1.3"/><circle cx="7" cy="11.5" r="1.3"/></g></svg>';
+const X_ICON = '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>';
+
+const el = {
+  chips: $('#chips'), empty: $('#empty'), emptyBtn: $('#emptyBtn'), emptyImport: $('#emptyImport'), story: $('#story'),
+  title: $('#storyTitle'), premise: $('#premise'), count: $('#count'), status: $('#status'),
+  line: $('#line'), blank: $('#blank'), zOut: $('#zOut'), zIn: $('#zIn'), zRange: $('#zRange'), zLabel: $('#zLabel'),
+  zoomGrp: $('#zoomGrp'), chapLabel: $('#chapLabel'), vbtns: [...document.querySelectorAll('.vitem')], dots: $('#dotsBtn'), menu: $('#viewMenu'), rail: $('#rail'),
+  add: $('#addBtn'), addBottom: $('#addBottom'), del: $('#delStory'), note: $('#note'),
+  saveOne: $('#saveOne'), saveAll: $('#saveAll'), saveText: $('#saveText'), openBtn: $('#openBtn'),
+  importFile: $('#importFile'), backupMsg: $('#backupMsg'), lastBackup: $('#lastBackup'), installTip: $('#installTip')
+};
+
+let stories = [];
+let currentId = LS.get(K_CUR);
+let zoom = Math.max(1, Math.min(MAXZ, parseInt(LS.get(K_ZOOM), 10) || 3));
+let view = LS.get(K_VIEW) === 'chapters' ? 'chapters' : 'story';
+let editingId = null, selectedId = null, pendingFocus = false, pendingPoint = null;
+let drag = null, saveTimer = 0;
+
+const isCh = e => !!e && e.kind === 'chapter';
+const cur = () => stories.find(s => s.id === currentId) || null;
+const visibleEvents = s => zoom === 1 ? s.events.filter(e => isCh(e) || e.key) : s.events;
+const plural = (n, w) => n + ' ' + (n === 1 ? w : (w === 'chapter' ? 'chapters' : w + 's'));
+const grow = t => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; };
+
+let noteTimer = 0;
+function note(msg, isErr, keep){
+  clearTimeout(noteTimer);
+  el.note.textContent = msg || ''; el.note.className = 'note' + (isErr ? ' err' : '');
+  if(msg && !keep) noteTimer = setTimeout(() => note(''), 8000);
+}
+function setStatus(text, isErr){ el.status.textContent = text || ''; el.status.className = isErr ? 'err' : ''; }
+function backupMsg(text, isErr){ el.backupMsg.textContent = text || ''; el.backupMsg.className = 'small' + (isErr ? ' err' : ''); }
+
+/* ---------- data ---------- */
+function normPoint(p){
+  if(typeof p === 'string') return { id: uid('p'), text: p };
+  return { id: String((p && p.id) || uid('p')), text: String((p && p.text) || '') };
+}
+function normEvent(e){
+  e = e || {};
+  if(e.kind === 'chapter') return { id: String(e.id || uid('c')), kind: 'chapter', title: String(e.title || ''), summary: String(e.summary || '') };
+  return {
+    id: String(e.id || uid('e')), kind: 'event', title: String(e.title || ''), when: String(e.when || ''),
+    detail: String(e.detail || ''), key: !!e.key, points: Array.isArray(e.points) ? e.points.map(normPoint) : []
+  };
+}
+function norm(d){
+  d = d || {};
+  return {
+    title: String(d.title || ''), premise: String(d.premise || ''), order: Number(d.order) || 0,
+    events: Array.isArray(d.events) ? d.events.map(normEvent) : []
+  };
+}
+function exampleStory(){
+  const ev = (id, title, when, detail, key, points) => ({ id, kind: 'event', title, when, detail, key, points: (points || []).map((t, i) => ({ id: id + '-p' + i, text: t })) });
+  const ch = (id, title, summary) => ({ id, kind: 'chapter', title, summary });
+  return {
+    id: 's-example', title: 'Example: The Keeper of Marrow Point',
+    premise: 'A sample timeline to show how the map works. Edit anything here, or use New story to start your own.',
+    order: 1,
+    events: [
+      ch('c-ex1', 'Arrival', 'Ines takes over a lighthouse whose last keeper left no explanation.'),
+      ev('e-ex1', 'A new keeper arrives', 'Autumn, Year 1', 'Ines Calloway takes the lighthouse post after the old keeper vanishes. The logbook ends mid-sentence.', true,
+        ['Arrives on the noon ferry with two trunks', 'The old keeper\'s coat is still on the hook', 'Tobias Reed carries her bags and says nothing']),
+      ev('e-ex2', 'The lamp room is locked from the inside', 'First week', 'Ines finds the door bolted and the lamp already burning. No one on the island admits to lighting it.', false),
+      ev('e-ex3', 'The supply boat skips a visit', 'Week 3', 'The ferryman, Tobias Reed, sends word that fog will keep him away until the first frost. Ines is left with twelve residents and one working radio.', false),
+      ch('c-ex2', 'The voice on the radio', 'Strange broadcasts begin, and the island starts giving up its secrets.'),
+      ev('e-ex4', 'The radio picks up a voice', 'Week 5', 'A voice reads out coordinates over a dead channel, always at 3:10 a.m. Ines starts writing them down.', false,
+        ['Always 3:10 a.m.', 'A woman\'s voice, reading numbers in pairs', 'Static drops out between each pair']),
+      ev('e-ex5', 'The coordinates form a map', 'Week 7', 'Plotted on a chart, the numbers trace the shoreline of Marrow Point a hundred years ago, before the north cliff fell into the sea.', true),
+      ev('e-ex6', 'Tobias admits what he saw', 'Week 8', 'On the night the old keeper vanished, the ferryman saw a second light out past the rocks and told no one.', false),
+      ch('c-ex3', 'Under the cliff', 'Ines follows the coordinates to a door that should not exist.'),
+      ev('e-ex7', 'An iron door under the north cliff', 'Week 10, low tide', 'Ines walks the exposed seabed and finds a door set into the rock, its hinges still bright.', true),
+      ev('e-ex8', 'The lamp goes out', 'Week 10, night', 'For the first time in a century the beam fails. The voice on the radio stops in the middle of a number.', true),
+      ev('e-ex9', 'Ines writes the last entry', 'Winter, Year 1', 'She closes the logbook with a full sentence, which is more than her predecessor managed.', false)
+    ]
+  };
+}
+function persistNow(){
+  clearTimeout(saveTimer); saveTimer = 0;
+  const data = stories.map(s => ({ id: s.id, title: s.title, premise: s.premise, order: s.order, events: s.events }));
+  const ok = LS.set(KEY, JSON.stringify(data));
+  setStatus(ok ? 'Saved on this device' : 'Not saved: this browser is blocking storage', !ok);
+  return ok;
+}
+function touch(){ setStatus('Saving...'); clearTimeout(saveTimer); saveTimer = setTimeout(persistNow, 300); }
+function load(){
+  const raw = LS.get(KEY); let list = [];
+  if(raw){
+    try { const p = JSON.parse(raw); if(!Array.isArray(p)) throw new Error('shape'); list = p; }
+    catch(e){
+      LS.set(KEY + '.corrupt', raw);
+      note('Your saved stories could not be read, so a copy was set aside and this page started fresh. Use Open a saved story to restore a backup file.', true, true);
+      list = [];
+    }
+  }
+  stories = list.filter(s => s && s.id).map(s => Object.assign({ id: String(s.id) }, norm(s))).sort((a, b) => a.order - b.order);
+  if(!LS.get(K_SEEDED)){
+    if(!stories.length){ stories = [exampleStory()]; persistNow(); }
+    LS.set(K_SEEDED, '1');
+  }
+  if(!stories.some(s => s.id === currentId)) currentId = stories.length ? stories[0].id : null;
+}
+
+/* numbering and chapter blocks */
+function numbering(s){
+  const nums = {}, chn = {}; let n = 0, c = 0;
+  s.events.forEach(e => { if(isCh(e)) chn[e.id] = ++c; else nums[e.id] = ++n; });
+  return { nums, chn };
+}
+function blocksOf(s){
+  const raw = []; let b = { marker: null, items: [] };
+  s.events.forEach(e => { if(isCh(e)){ raw.push(b); b = { marker: e, items: [] }; } else b.items.push(e); });
+  raw.push(b);
+  const out = raw.filter(x => x.marker || x.items.length);
+  let n = 0;
+  out.forEach(x => { x.from = n + 1; n += x.items.length; x.to = n; x.keys = x.items.filter(e => e.key).length; });
+  return out;
+}
+function rangeText(b){
+  const n = b.items.length;
+  if(!n) return 'No events yet';
+  const bits = [n === 1 ? 'Event ' + b.from : 'Events ' + b.from + ' to ' + b.to];
+  if(n > 1) bits.push(n + ' events');
+  if(b.keys) bits.push(plural(b.keys, 'key moment'));
+  return bits.join(' · ');
+}
+function rebuild(s, opening, chapters){
+  const out = opening ? opening.items.slice() : [];
+  chapters.forEach(b => { out.push(b.marker); b.items.forEach(e => out.push(e)); });
+  s.events = out;
+}
+const livePoints = e => (e.points || []).filter(p => p.text.trim());
+
+/* ---------- rendering ---------- */
+function renderChips(){
+  el.chips.hidden = stories.length === 0;
+  el.chips.innerHTML = stories.map(s =>
+    `<button class="chip" type="button" data-story="${esc(s.id)}" aria-pressed="${s.id === currentId}">${esc(s.title) || 'Untitled story'}</button>`
+  ).join('') + '<button class="chip add" type="button" data-new>+ New story</button>';
+}
+function renderHead(){
+  const s = cur();
+  if(document.activeElement !== el.title) el.title.value = s.title;
+  if(document.activeElement !== el.premise) el.premise.value = s.premise;
+  grow(el.title); grow(el.premise);
+}
+function updateCount(){
+  const s = cur(); if(!s) return;
+  const evs = s.events.filter(e => !isCh(e));
+  const k = evs.filter(e => e.key).length, c = s.events.length - evs.length;
+  el.count.textContent = plural(evs.length, 'event') + ' · ' + plural(k, 'key moment') + (c ? ' · ' + plural(c, 'chapter') : '');
+}
+function renderBar(){
+  const ch = view === 'chapters';
+  el.zoomGrp.hidden = ch; el.chapLabel.hidden = !ch;
+  el.zRange.value = zoom;
+  el.zOut.disabled = zoom <= 1; el.zIn.disabled = zoom >= MAXZ;
+  el.zLabel.innerHTML = '<b>' + ZOOMS[zoom][0] + '</b><span class="sub">' + ZOOMS[zoom][1] + '</span>';
+  el.zLabel.title = ZOOMS[zoom][1];
+  el.add.textContent = ch ? '+ Chapter' : '+ Event';
+  el.add.setAttribute('aria-label', ch ? 'Add chapter' : 'Add event');
+  el.addBottom.textContent = ch ? 'Add chapter' : 'Add event';
+  el.vbtns.forEach(b => b.setAttribute('aria-checked', String(b.dataset.view === view)));
+}
+function renderKeep(){
+  const t = parseInt(LS.get(K_BACKUP), 10);
+  el.lastBackup.textContent = t
+    ? 'Last backup file: ' + new Date(t).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+    : 'No backup file saved yet.';
+  const standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone;
+  el.installTip.hidden = !!standalone;
+}
+
+function eventForm(e){
+  return `<form class="eform" data-form autocomplete="off">
+      <label><span class="lab">Title</span><input type="text" data-field="title" maxlength="140" value="${esc(e.title)}" placeholder="What happens"></label>
+      <label><span class="lab">When <span class="hint">optional: a date, chapter or day</span></span><input type="text" data-field="when" maxlength="80" value="${esc(e.when)}" placeholder="Chapter 4, or Spring 1893"></label>
+      <label><span class="lab">Details</span><textarea data-field="detail" rows="6" placeholder="Who is involved, what changes, why it matters">${esc(e.detail)}</textarea></label>
+      <label class="chk"><input type="checkbox" data-field="key"${e.key ? ' checked' : ''}><span>Key moment <span class="hint">stays visible when zoomed out</span></span></label>
+      <div class="facts"><button type="submit" class="btn primary">Done</button><button type="button" class="btn danger" data-action="del">Delete event</button></div>
+    </form>`;
+}
+function chapterForm(e){
+  return `<form class="eform" data-form autocomplete="off">
+      <label><span class="lab">Chapter title</span><input type="text" data-field="title" maxlength="80" value="${esc(e.title)}" placeholder="Meet the family"></label>
+      <label><span class="lab">About this chapter <span class="hint">one or two lines</span></span><textarea data-field="summary" rows="3" maxlength="220" placeholder="What happens in this part of the story">${esc(e.summary)}</textarea></label>
+      <div class="facts"><button type="submit" class="btn primary">Done</button><button type="button" class="btn danger" data-action="delch">Remove chapter</button></div>
+    </form>`;
+}
+function pointsHTML(e){
+  const rows = (e.points || []).map(p =>
+    `<li class="pt" data-pid="${esc(p.id)}"><button type="button" class="pgrip" data-pgrip aria-label="Drag to reorder this small detail">${GRIP_S}</button><input type="text" class="pin" data-pt="${esc(p.id)}" maxlength="200" value="${esc(p.text)}" placeholder="Small detail" aria-label="Small detail"><button type="button" class="pdel" data-action="pdel" data-pid="${esc(p.id)}" aria-label="Remove this small detail">${X_ICON}</button></li>`
+  ).join('');
+  return `<div class="ptsbox"><span class="lab">Small details</span><ul class="pts">${rows}</ul><button type="button" class="padd" data-action="padd">+ Small detail</button></div>`;
+}
+function evHTML(e, i, n, ctx, all){
+  const sel = selectedId === e.id, edit = editingId === e.id;
+  const cls = 'ev' + (e.key ? ' key' : '') + (sel || edit ? ' sel' : '') + (edit ? ' edit' : '');
+  let body;
+  if(edit){ body = eventForm(e); }
+  else {
+    const title = e.title ? esc(e.title) : '<span class="ph">Untitled event</span>';
+    const whenLine = `<p class="when"><span class="num">${ctx.nums[e.id]}</span>${e.when ? ' · ' + esc(e.when) : ''}</p>`;
+    const detail = (zoom >= 3 || sel) && e.detail ? `<p class="detail">${esc(e.detail).replace(/\n/g, '<br>')}</p>` : '';
+    const np = livePoints(e).length;
+    let pts = '';
+    if(zoom === 5) pts = pointsHTML(e);
+    else if(np && (zoom === 3 || zoom === 4)) pts = `<p class="ptsum">${plural(np, 'small detail')}</p>`;
+    const gi = all.findIndex(x => x.id === e.id);
+    const startsChapter = gi > 0 && isCh(all[gi - 1]);
+    const acts = sel ? `<div class="acts">
+        <button type="button" data-action="edit">Edit</button>
+        <button type="button" data-action="up"${i === 0 ? ' disabled' : ''}>Move up</button>
+        <button type="button" data-action="down"${i === n - 1 ? ' disabled' : ''}>Move down</button>
+        <button type="button" data-action="after">Add below</button>
+        <button type="button" data-action="key">${e.key ? 'Unmark key moment' : 'Mark key moment'}</button>
+        ${startsChapter ? '' : '<button type="button" data-action="startch">Start chapter here</button>'}
+      </div>` : '';
+    body = `<div class="row1"><div class="txt">${whenLine}<h3 class="et"><button type="button" class="tbtn" data-action="select" aria-expanded="${sel}">${title}</button></h3></div><button type="button" class="grip" data-grip aria-label="Drag to reorder: ${esc(e.title || 'untitled event')}">${GRIP}</button></div>${detail}${pts}${acts}`;
+  }
+  return `<li class="${cls}" data-id="${esc(e.id)}"><span class="node" aria-hidden="true"></span><article class="card">${body}</article></li>`;
+}
+function markerHTML(e, i, n, ctx){
+  const sel = selectedId === e.id, edit = editingId === e.id;
+  const cls = 'ev chap' + (sel || edit ? ' sel' : '') + (edit ? ' edit' : '');
+  let body;
+  if(edit){ body = chapterForm(e); }
+  else {
+    const title = e.title ? esc(e.title) : '<span class="ph">Untitled chapter</span>';
+    const sum = (zoom >= 3 || sel) && e.summary ? `<p class="detail">${esc(e.summary)}</p>` : '';
+    const acts = sel ? `<div class="acts">
+        <button type="button" data-action="edit">Edit</button>
+        <button type="button" data-action="up"${i === 0 ? ' disabled' : ''}>Move up</button>
+        <button type="button" data-action="down"${i === n - 1 ? ' disabled' : ''}>Move down</button>
+        <button type="button" data-action="delch">Remove chapter</button>
+      </div>` : '';
+    body = `<div class="row1"><div class="txt"><p class="when">Chapter ${ctx.chn[e.id]}</p><h3 class="et"><button type="button" class="tbtn" data-action="select" aria-expanded="${sel}">${title}</button></h3></div><button type="button" class="grip" data-grip aria-label="Drag to move the start of this chapter">${GRIP}</button></div>${sum}${acts}`;
+  }
+  return `<li class="${cls}" data-id="${esc(e.id)}"><span class="node" aria-hidden="true"></span><article class="card">${body}</article></li>`;
+}
+function chapCardHTML(b, ci, cn, ctx){
+  if(!b.marker){
+    return `<li class="ev chapcard open" data-id="opening" data-fixed="1"><span class="node muted" aria-hidden="true"></span><article class="card">
+      <p class="when">Not in a chapter yet</p>
+      <p class="range">${esc(rangeText(b))}</p>
+      <p class="detail">These events come before the first chapter.</p>
+      <div class="acts"><button type="button" data-action="startfirst">Start a chapter here</button><button type="button" data-action="openopening">Open events</button></div>
+    </article></li>`;
+  }
+  const m = b.marker, sel = selectedId === m.id, edit = editingId === m.id;
+  const cls = 'ev chapcard' + (sel || edit ? ' sel' : '') + (edit ? ' edit' : '');
+  let body;
+  if(edit){ body = chapterForm(m); }
+  else {
+    const title = m.title ? esc(m.title) : '<span class="ph">Untitled chapter</span>';
+    const acts = sel ? `<div class="acts">
+        <button type="button" data-action="edit">Edit</button>
+        <button type="button" data-action="openchap">Open events</button>
+        <button type="button" data-action="up"${ci === 0 ? ' disabled' : ''}>Move up</button>
+        <button type="button" data-action="down"${ci === cn - 1 ? ' disabled' : ''}>Move down</button>
+        <button type="button" data-action="addhere">Add event here</button>
+        <button type="button" data-action="delch">Remove chapter</button>
+      </div>` : '';
+    body = `<div class="row1"><div class="txt"><p class="when">Chapter ${ctx.chn[m.id]}</p><h3 class="et"><button type="button" class="tbtn" data-action="select" aria-expanded="${sel}">${title}</button></h3></div><button type="button" class="grip" data-grip aria-label="Drag to move this chapter with its events">${GRIP}</button></div>${m.summary ? `<p class="detail">${esc(m.summary)}</p>` : ''}<p class="range">${esc(rangeText(b))}</p>${acts}`;
+  }
+  return `<li class="${cls}" data-id="${esc(m.id)}" data-kind="block"><span class="node" aria-hidden="true"></span><article class="card">${body}</article></li>`;
+}
+function renderList(){
+  const s = cur(); if(!s) return;
+  const ctx = numbering(s);
+  let html = '', msg = '';
+  if(view === 'chapters'){
+    const bl = blocksOf(s), chs = bl.filter(b => b.marker);
+    el.line.className = 'line zc';
+    let ci = -1;
+    html = bl.map(b => chapCardHTML(b, b.marker ? ++ci : -1, chs.length, ctx)).join('');
+    if(!bl.length) msg = 'No chapters yet. Add the first one with the button above, then set where each chapter starts from the Timeline.';
+  } else {
+    const vis = visibleEvents(s);
+    el.line.className = 'line z' + zoom;
+    html = vis.map((e, i) => isCh(e) ? markerHTML(e, i, vis.length, ctx) : evHTML(e, i, vis.length, ctx, s.events)).join('');
+    if(!s.events.length) msg = 'Nothing on this timeline yet. Add the first event, then drag it into place as the story takes shape.';
+    else if(!vis.length) msg = 'No key moments yet. Select an event and mark it as a key moment to see it at this zoom.';
+  }
+  el.line.innerHTML = html;
+  el.blank.textContent = msg; el.blank.hidden = !msg;
+  el.line.hidden = !html;
+  updateCount();
+  if(pendingFocus){
+    pendingFocus = false;
+    const t = el.line.querySelector('[data-field="title"]');
+    if(t){ t.focus(); const li = t.closest('li'); if(li) li.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+  }
+  if(pendingPoint){
+    const pid = pendingPoint; pendingPoint = null;
+    const inp = el.line.querySelector('[data-pt="' + pid + '"]');
+    if(inp){ inp.focus(); inp.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+  }
+}
+function renderAll(){
+  const s = cur();
+  el.empty.hidden = !!s; el.story.hidden = !s;
+  renderChips();
+  if(!s) return;
+  renderHead(); renderBar(); renderList(); renderKeep();
+}
+
+/* ---------- views and zoom ---------- */
+function pruneBlank(){
+  const s = cur(); if(!s) return;
+  let changed = false;
+  s.events.forEach(e => { if(!isCh(e) && e.points && e.points.some(p => !p.text.trim())){ e.points = e.points.filter(p => p.text.trim()); changed = true; } });
+  if(changed) persistNow();
+}
+function setZoom(z){
+  z = Math.max(1, Math.min(MAXZ, z));
+  if(z === zoom) return;
+  if(zoom === 5) pruneBlank();
+  zoom = z; LS.set(K_ZOOM, String(z));
+  const s = cur();
+  if(s && selectedId && !visibleEvents(s).some(e => e.id === selectedId)){ selectedId = null; editingId = null; }
+  renderBar(); renderList();
+}
+function setView(v){
+  if(v === view) return;
+  if(saveTimer) persistNow();
+  pruneBlank();
+  view = v; LS.set(K_VIEW, v);
+  editingId = null; selectedId = null;
+  renderAll(); window.scrollTo({ top: 0 });
+}
+function closeMenu(refocus){
+  if(el.menu.hidden) return;
+  el.menu.hidden = true; el.dots.setAttribute('aria-expanded', 'false');
+  if(refocus) el.dots.focus();
+}
+function openMenu(){
+  el.menu.hidden = false; el.dots.setAttribute('aria-expanded', 'true');
+  const on = el.menu.querySelector('[aria-checked="true"]'); if(on) on.focus();
+}
+el.dots.addEventListener('click', () => el.menu.hidden ? openMenu() : closeMenu(false));
+el.vbtns.forEach(b => b.addEventListener('click', () => { setView(b.dataset.view); closeMenu(true); }));
+document.addEventListener('pointerdown', ev => { if(!el.menu.hidden && !el.rail.contains(ev.target)) closeMenu(false); });
+el.menu.addEventListener('keydown', ev => {
+  const items = el.vbtns, i = items.indexOf(document.activeElement);
+  if(ev.key === 'ArrowDown'){ ev.preventDefault(); items[(i + 1) % items.length].focus(); }
+  else if(ev.key === 'ArrowUp'){ ev.preventDefault(); items[(i + items.length - 1) % items.length].focus(); }
+});
+document.addEventListener('keydown', ev => { if(ev.key === 'Escape' && !el.menu.hidden){ ev.stopPropagation(); closeMenu(true); } }, true);
+
+/* ---------- edits ---------- */
+function findEv(id){ const s = cur(); return s ? s.events.find(e => e.id === id) : null; }
+function toggleSelect(id){
+  selectedId = selectedId === id ? null : id;
+  if(editingId && editingId !== id) editingId = null;
+  renderList();
+}
+function startEdit(id){ editingId = id; selectedId = id; pendingFocus = true; renderList(); }
+function finishEdit(){
+  editingId = null;
+  const s = cur();
+  if(s && selectedId && view === 'story' && !visibleEvents(s).some(e => e.id === selectedId)) selectedId = null;
+  persistNow(); renderList();
+}
+function addEvent(afterId){
+  const s = cur(); if(!s) return;
+  if(zoom < 2){ zoom = 2; LS.set(K_ZOOM, '2'); renderBar(); }
+  const e = normEvent({});
+  let at = s.events.length;
+  if(afterId){ const i = s.events.findIndex(x => x.id === afterId); if(i >= 0) at = i + 1; }
+  s.events.splice(at, 0, e);
+  editingId = e.id; selectedId = e.id; pendingFocus = true;
+  touch(); renderList();
+}
+function deleteEvent(id){
+  const s = cur(); if(!s) return;
+  s.events = s.events.filter(e => e.id !== id);
+  editingId = null; selectedId = null;
+  persistNow(); renderList();
+}
+function step(id, dir){
+  const s = cur(); if(!s) return;
+  const vis = visibleEvents(s).map(e => e.id);
+  const nb = vis[vis.indexOf(id) + dir];
+  if(!nb) return;
+  const i = s.events.findIndex(e => e.id === id);
+  const ev = s.events.splice(i, 1)[0];
+  const j = s.events.findIndex(e => e.id === nb);
+  s.events.splice(dir < 0 ? j : j + 1, 0, ev);
+  persistNow(); renderList();
+  const li = el.line.querySelector(`[data-id="${id}"]`); if(li) li.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+function moveTo(id, target, otherIds){
+  const s = cur(); if(!s) return;
+  const before = s.events.map(e => e.id).join();
+  const i = s.events.findIndex(e => e.id === id);
+  const ev = s.events.splice(i, 1)[0];
+  let at;
+  if(target < otherIds.length) at = s.events.findIndex(e => e.id === otherIds[target]);
+  else if(otherIds.length) at = s.events.findIndex(e => e.id === otherIds[otherIds.length - 1]) + 1;
+  else at = i;
+  s.events.splice(at, 0, ev);
+  if(s.events.map(e => e.id).join() !== before) persistNow();
+  renderList();
+}
+
+/* chapters */
+function addChapter(){
+  const s = cur(); if(!s) return;
+  const m = normEvent({ kind: 'chapter' });
+  if(!s.events.some(isCh) && s.events.length) s.events.unshift(m); else s.events.push(m);
+  editingId = m.id; selectedId = m.id; pendingFocus = true;
+  touch(); renderList();
+}
+function startChapterBefore(eid){
+  const s = cur(); if(!s) return;
+  const m = normEvent({ kind: 'chapter' });
+  let at = 0;
+  if(eid){ const i = s.events.findIndex(x => x.id === eid); at = i < 0 ? 0 : i; }
+  s.events.splice(at, 0, m);
+  editingId = m.id; selectedId = m.id; pendingFocus = true;
+  touch(); renderList();
+}
+function deleteChapter(id){
+  const s = cur(); if(!s) return;
+  s.events = s.events.filter(e => e.id !== id);
+  editingId = null; selectedId = null;
+  persistNow(); renderList();
+}
+function stepBlock(id, dir){
+  const s = cur(); if(!s) return;
+  const bl = blocksOf(s), opening = bl.find(b => !b.marker) || null, chs = bl.filter(b => b.marker);
+  const i = chs.findIndex(b => b.marker.id === id), j = i + dir;
+  if(i < 0 || j < 0 || j >= chs.length) return;
+  const t = chs[i]; chs[i] = chs[j]; chs[j] = t;
+  rebuild(s, opening, chs);
+  persistNow(); renderList();
+  const li = el.line.querySelector(`[data-id="${id}"]`); if(li) li.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+function moveBlock(id, target, otherIds){
+  const s = cur(); if(!s) return;
+  const bl = blocksOf(s), opening = bl.find(b => !b.marker) || null;
+  const chs = bl.filter(b => b.marker);
+  const i = chs.findIndex(b => b.marker.id === id); if(i < 0) return;
+  const b = chs.splice(i, 1)[0];
+  const at = target < otherIds.length ? chs.findIndex(x => x.marker.id === otherIds[target]) : chs.length;
+  const before = s.events.map(e => e.id).join();
+  chs.splice(at < 0 ? chs.length : at, 0, b);
+  rebuild(s, opening, chs);
+  if(s.events.map(e => e.id).join() !== before) persistNow();
+  renderList();
+}
+function openChapter(id){
+  view = 'story'; LS.set(K_VIEW, 'story');
+  editingId = null; selectedId = null;
+  renderAll();
+  const li = id ? el.line.querySelector(`[data-id="${id}"]`) : null;
+  if(li) li.scrollIntoView({ block: 'start' }); else window.scrollTo({ top: 0 });
+}
+function addEventToChapter(mid){
+  const s = cur(); if(!s) return;
+  const i = s.events.findIndex(x => x.id === mid); if(i < 0) return;
+  let j = i + 1;
+  while(j < s.events.length && !isCh(s.events[j])) j++;
+  const e = normEvent({});
+  s.events.splice(j, 0, e);
+  view = 'story'; LS.set(K_VIEW, 'story');
+  if(zoom < 2){ zoom = 2; LS.set(K_ZOOM, '2'); }
+  editingId = e.id; selectedId = e.id; pendingFocus = true;
+  persistNow(); renderAll();
+}
+
+/* small details */
+function addPoint(eid, afterPid){
+  const e = findEv(eid); if(!e) return;
+  e.points = e.points || [];
+  const p = { id: uid('p'), text: '' };
+  let at = e.points.length;
+  if(afterPid){ const i = e.points.findIndex(x => x.id === afterPid); if(i >= 0) at = i + 1; }
+  e.points.splice(at, 0, p);
+  pendingPoint = p.id; persistNow(); renderList();
+}
+function removePoint(eid, pid, focusPrev){
+  const e = findEv(eid); if(!e || !e.points) return;
+  const i = e.points.findIndex(x => x.id === pid); if(i < 0) return;
+  e.points.splice(i, 1);
+  if(focusPrev && i > 0) pendingPoint = e.points[i - 1].id;
+  persistNow(); renderList();
+}
+function movePoint(eid, pid, target, otherIds){
+  const e = findEv(eid); if(!e || !e.points) return;
+  const i = e.points.findIndex(x => x.id === pid); if(i < 0) return;
+  const before = e.points.map(p => p.id).join();
+  const p = e.points.splice(i, 1)[0];
+  const at = target < otherIds.length ? e.points.findIndex(x => x.id === otherIds[target]) : e.points.length;
+  e.points.splice(at < 0 ? e.points.length : at, 0, p);
+  if(e.points.map(x => x.id).join() !== before) persistNow();
+  renderList();
+}
+
+function armed(btn, label, run){
+  if(btn.dataset.armed){ run(); return; }
+  btn.dataset.armed = '1'; const orig = btn.textContent; btn.textContent = label;
+  setTimeout(() => { if(btn.isConnected){ delete btn.dataset.armed; btn.textContent = orig; } }, 3000);
+}
+
+el.line.addEventListener('click', ev => {
+  const li = ev.target.closest('li.ev'); if(!li) return;
+  const id = li.dataset.id;
+  const btn = ev.target.closest('[data-action]');
+  const act = btn ? btn.dataset.action : null;
+  if(act === 'select') return toggleSelect(id);
+  if(act === 'edit') return startEdit(id);
+  if(act === 'up') return view === 'chapters' ? stepBlock(id, -1) : step(id, -1);
+  if(act === 'down') return view === 'chapters' ? stepBlock(id, 1) : step(id, 1);
+  if(act === 'after') return addEvent(id);
+  if(act === 'key'){
+    const e = findEv(id);
+    if(e){ e.key = !e.key; persistNow(); const s = cur(); if(!visibleEvents(s).some(x => x.id === id)) selectedId = null; renderList(); }
+    return;
+  }
+  if(act === 'startch') return startChapterBefore(id);
+  if(act === 'startfirst') return startChapterBefore(null);
+  if(act === 'openchap') return openChapter(id);
+  if(act === 'openopening') return openChapter(null);
+  if(act === 'addhere') return addEventToChapter(id);
+  if(act === 'padd') return addPoint(id, null);
+  if(act === 'pdel') return removePoint(id, btn.dataset.pid);
+  if(act === 'del') return armed(btn, 'Tap again to delete', () => deleteEvent(id));
+  if(act === 'delch') return armed(btn, 'Tap again to remove', () => deleteChapter(id));
+  if(!ev.target.closest('button,input,textarea,label,a') && !li.classList.contains('edit') && id !== 'opening') toggleSelect(id);
+});
+el.line.addEventListener('submit', ev => { ev.preventDefault(); finishEdit(); });
+function onField(ev){
+  const t = ev.target;
+  const li = t.closest('li.ev'); const e = li && findEv(li.dataset.id); if(!e) return;
+  if(t.dataset.pt){
+    const p = (e.points || []).find(x => x.id === t.dataset.pt);
+    if(p){ p.text = t.value; touch(); }
+    return;
+  }
+  const f = t.dataset && t.dataset.field; if(!f) return;
+  e[f] = f === 'key' ? t.checked : t.value;
+  touch(); updateCount();
+}
+el.line.addEventListener('input', onField);
+el.line.addEventListener('change', ev => { if(ev.target.type === 'checkbox') onField(ev); });
+el.line.addEventListener('keydown', ev => {
+  const t = ev.target; if(!t.dataset || !t.dataset.pt) return;
+  const li = t.closest('li.ev'); if(!li) return;
+  if(ev.key === 'Enter'){ ev.preventDefault(); if(t.value.trim()) addPoint(li.dataset.id, t.dataset.pt); }
+  else if(ev.key === 'Backspace' && t.value === ''){ ev.preventDefault(); removePoint(li.dataset.id, t.dataset.pt, true); }
+});
+document.addEventListener('keydown', ev => { if(ev.key === 'Escape' && editingId) finishEdit(); });
+
+/* ---------- drag to reorder (pointer based, works with touch) ---------- */
+el.line.addEventListener('pointerdown', ev => {
+  const g = ev.target.closest('[data-grip],[data-pgrip]');
+  if(!g || (ev.button !== undefined && ev.button !== 0) || drag) return;
+  const isPt = g.hasAttribute('data-pgrip');
+  const li = g.closest(isPt ? 'li.pt' : 'li.ev'); if(!li) return;
+  drag = {
+    kind: isPt ? 'point' : (li.dataset.kind || 'event'),
+    id: isPt ? li.dataset.pid : li.dataset.id,
+    owner: isPt ? li.closest('li.ev').dataset.id : null,
+    li, g, container: li.parentElement, startPageY: ev.pageY, lastClientY: ev.clientY, target: 0, others: [], raf: 0
+  };
+  li.classList.add('dragging'); document.body.classList.add('is-dragging');
+  try { g.setPointerCapture(ev.pointerId); } catch(e){}
+  g.addEventListener('pointermove', onDragMove);
+  g.addEventListener('pointerup', endDrag);
+  g.addEventListener('pointercancel', cancelDrag);
+  ev.preventDefault();
+  dragLoop();
+});
+function onDragMove(ev){ if(!drag) return; drag.lastClientY = ev.clientY; updateDrag(); }
+function updateDrag(){
+  const pageY = drag.lastClientY + window.scrollY;
+  drag.li.style.transform = `translateY(${pageY - drag.startPageY}px)`;
+  const isPt = drag.kind === 'point';
+  const others = [...drag.container.children].filter(li => li !== drag.li && (isPt ? li.dataset.pid : (li.dataset.id && !li.dataset.fixed)));
+  let t = 0;
+  others.forEach(li => {
+    const r = li.getBoundingClientRect();
+    if(r.top + window.scrollY + r.height / 2 < pageY) t++;
+    li.classList.remove('drop-before', 'drop-after');
+  });
+  drag.target = t; drag.others = others;
+  if(t < others.length) others[t].classList.add('drop-before');
+  else if(others.length) others[others.length - 1].classList.add('drop-after');
+}
+function dragLoop(){
+  if(!drag) return;
+  const y = drag.lastClientY, h = window.innerHeight;
+  let d = 0;
+  if(y < 130) d = -Math.min(18, (130 - y) / 4);
+  else if(y > h - 90) d = Math.min(18, (y - (h - 90)) / 4);
+  if(d){ window.scrollBy(0, d); updateDrag(); }
+  drag.raf = requestAnimationFrame(dragLoop);
+}
+function cleanupDrag(){
+  const d = drag; if(!d) return null;
+  cancelAnimationFrame(d.raf);
+  d.g.removeEventListener('pointermove', onDragMove);
+  d.g.removeEventListener('pointerup', endDrag);
+  d.g.removeEventListener('pointercancel', cancelDrag);
+  d.li.classList.remove('dragging'); d.li.style.transform = '';
+  d.others.forEach(li => li.classList.remove('drop-before', 'drop-after'));
+  document.body.classList.remove('is-dragging');
+  drag = null; return d;
+}
+function endDrag(){
+  const d = cleanupDrag(); if(!d) return;
+  const ids = d.others.map(li => d.kind === 'point' ? li.dataset.pid : li.dataset.id);
+  if(d.kind === 'point') movePoint(d.owner, d.id, d.target, ids);
+  else if(d.kind === 'block') moveBlock(d.id, d.target, ids);
+  else moveTo(d.id, d.target, ids);
+}
+function cancelDrag(){ cleanupDrag(); }
+
+/* ---------- stories ---------- */
+function switchTo(id){
+  if(saveTimer) persistNow();
+  pruneBlank();
+  editingId = null; selectedId = null; currentId = id; LS.set(K_CUR, id);
+  renderAll(); window.scrollTo({ top: 0 });
+}
+function newStory(){
+  if(saveTimer) persistNow();
+  pruneBlank();
+  const s = { id: uid('s'), title: '', premise: '', order: Date.now(), events: [] };
+  stories.push(s); currentId = s.id; editingId = null; selectedId = null;
+  view = 'story'; LS.set(K_VIEW, 'story');
+  LS.set(K_CUR, s.id); persistNow();
+  renderAll(); window.scrollTo({ top: 0 }); el.title.focus();
+}
+function deleteStory(){
+  const s = cur(); if(!s) return;
+  stories = stories.filter(x => x.id !== s.id);
+  currentId = stories.length ? stories[0].id : null;
+  if(currentId) LS.set(K_CUR, currentId);
+  editingId = null; selectedId = null;
+  persistNow(); renderAll(); window.scrollTo({ top: 0 });
+}
+el.chips.addEventListener('click', ev => {
+  const b = ev.target.closest('button'); if(!b) return;
+  if(b.hasAttribute('data-new')) return newStory();
+  if(b.dataset.story && b.dataset.story !== currentId) switchTo(b.dataset.story);
+});
+el.emptyBtn.addEventListener('click', newStory);
+const onAdd = () => view === 'chapters' ? addChapter() : addEvent();
+el.add.addEventListener('click', onAdd);
+el.addBottom.addEventListener('click', onAdd);
+el.del.addEventListener('click', () => armed(el.del, 'Tap again to delete this story', deleteStory));
+el.zOut.addEventListener('click', () => setZoom(zoom - 1));
+el.zIn.addEventListener('click', () => setZoom(zoom + 1));
+el.zRange.addEventListener('input', () => setZoom(parseInt(el.zRange.value, 10)));
+el.title.addEventListener('input', () => {
+  const s = cur(); if(!s) return;
+  el.title.value = el.title.value.replace(/\n/g, ' ');
+  s.title = el.title.value; grow(el.title);
+  const chip = el.chips.querySelector(`[data-story="${s.id}"]`);
+  if(chip) chip.textContent = s.title || 'Untitled story';
+  touch();
+});
+el.title.addEventListener('keydown', ev => { if(ev.key === 'Enter'){ ev.preventDefault(); el.title.blur(); } });
+el.premise.addEventListener('input', () => {
+  const s = cur(); if(!s) return;
+  el.premise.value = el.premise.value.replace(/\n/g, ' ');
+  s.premise = el.premise.value; grow(el.premise); touch();
+});
+el.premise.addEventListener('keydown', ev => { if(ev.key === 'Enter'){ ev.preventDefault(); el.premise.blur(); } });
+const regrow = () => { if(!el.story.hidden){ grow(el.title); grow(el.premise); } };
+window.addEventListener('resize', regrow);
+if(document.fonts && document.fonts.ready) document.fonts.ready.then(regrow);
+window.addEventListener('pagehide', () => { if(saveTimer) persistNow(); });
+document.addEventListener('visibilitychange', () => { if(document.hidden && saveTimer) persistNow(); });
+window.addEventListener('storage', ev => {
+  if(ev.key !== KEY || drag || editingId) return;
+  load(); renderAll();
+});
+
+/* ---------- save, share and open files ---------- */
+function slug(t){ return String(t || 'story').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'story'; }
+function pack(list){
+  return JSON.stringify({
+    app: 'plotline', version: 2, exported: new Date().toISOString(),
+    stories: list.map(s => ({
+      title: s.title, premise: s.premise,
+      events: s.events.map(e => isCh(e)
+        ? { kind: 'chapter', title: e.title, summary: e.summary }
+        : { title: e.title, when: e.when, detail: e.detail, key: !!e.key, points: livePoints(e).map(p => p.text) })
+    }))
+  }, null, 2);
+}
+function outline(s){
+  const out = [s.title || 'Untitled story'];
+  if(s.premise) out.push('', s.premise);
+  out.push('', '(* marks a key moment)', '');
+  let n = 0, c = 0;
+  s.events.forEach(e => {
+    if(isCh(e)){
+      c++;
+      out.push('CHAPTER ' + c + (e.title ? ': ' + e.title : ''));
+      if(e.summary) out.push(e.summary);
+      out.push('');
+      return;
+    }
+    n++;
+    out.push(n + '. ' + (e.title || 'Untitled event') + (e.when ? ' (' + e.when + ')' : '') + (e.key ? ' *' : ''));
+    if(e.detail) out.push('   ' + e.detail.replace(/\n/g, '\n   '));
+    livePoints(e).forEach(p => out.push('   - ' + p.text));
+    out.push('');
+  });
+  return out.join('\n');
+}
+async function saveFile(name, text, mime){
+  try {
+    const file = new File([text], name, { type: mime });
+    if(navigator.canShare && navigator.canShare({ files: [file] })){
+      await navigator.share({ files: [file], title: name });
+      return 'shared';
+    }
+  } catch(err){
+    if(err && err.name === 'AbortError') return 'cancelled';
+  }
+  const url = URL.createObjectURL(new Blob([text], { type: mime }));
+  const a = document.createElement('a');
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  return 'downloaded';
+}
+async function doSave(kind){
+  const s = cur();
+  let name, text, mime;
+  if(kind === 'all'){ name = 'plotline-backup-' + new Date().toISOString().slice(0, 10) + '.json'; text = pack(stories); mime = 'application/json'; }
+  else if(!s) return;
+  else if(kind === 'one'){ name = 'plotline-' + slug(s.title) + '.json'; text = pack([s]); mime = 'application/json'; }
+  else { name = slug(s.title) + '-outline.txt'; text = outline(s); mime = 'text/plain'; }
+  persistNow();
+  let r;
+  try { r = await saveFile(name, text, mime); }
+  catch(e){ backupMsg('That file could not be saved from this browser.', true); return; }
+  if(r === 'cancelled'){ backupMsg('Nothing was saved.'); return; }
+  if(kind !== 'text'){ LS.set(K_BACKUP, String(Date.now())); renderKeep(); }
+  backupMsg(r === 'shared' ? 'In the share sheet, choose Save to Files or Google Drive.' : 'Saved to your downloads folder as ' + name + '.');
+}
+function parseImport(d){
+  const arr = d && Array.isArray(d.stories) ? d.stories : (d && Array.isArray(d.events) ? [d] : null);
+  if(!arr) throw new Error('not a story file');
+  const list = arr.map(norm).filter(s => s.title || s.premise || s.events.length);
+  if(!list.length) throw new Error('empty');
+  return list;
+}
+async function doImport(file){
+  try {
+    const list = parseImport(JSON.parse(await file.text()));
+    const base = Date.now();
+    const added = list.map((s, i) => ({
+      id: uid('s'), title: s.title, premise: s.premise, order: base + i,
+      events: s.events.map(e => {
+        const c = Object.assign({}, e, { id: uid(isCh(e) ? 'c' : 'e') });
+        if(c.points) c.points = c.points.map(p => ({ id: uid('p'), text: p.text }));
+        return c;
+      })
+    }));
+    stories.push(...added);
+    currentId = added[0].id; LS.set(K_CUR, currentId); LS.set(K_SEEDED, '1');
+    editingId = null; selectedId = null;
+    persistNow(); renderAll(); window.scrollTo({ top: 0 });
+    backupMsg('Added ' + (added.length === 1 ? '1 story' : added.length + ' stories') + ' from ' + file.name + '.');
+    note('');
+  } catch(e){
+    const msg = 'That file could not be opened. Pick a file saved from Plotline.';
+    backupMsg(msg, true); note(msg, true);
+  }
+}
+el.saveOne.addEventListener('click', () => doSave('one'));
+el.saveAll.addEventListener('click', () => doSave('all'));
+el.saveText.addEventListener('click', () => doSave('text'));
+el.openBtn.addEventListener('click', () => el.importFile.click());
+el.emptyImport.addEventListener('click', () => el.importFile.click());
+el.importFile.addEventListener('change', () => {
+  const f = el.importFile.files && el.importFile.files[0];
+  el.importFile.value = '';
+  if(f) doImport(f);
+});
+
+/* ---------- start ---------- */
+if(!storageOK) note('This browser is not allowing saved data, so changes will be lost when you close the page. Use Save all stories to keep your work.', true, true);
+load();
+renderBar();
+renderAll();
+if(navigator.storage && navigator.storage.persist){ try { navigator.storage.persist(); } catch(e){} }
+try {
+  if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+} catch(e){}
+})();
+</script>
+
+</body>
+</html>
